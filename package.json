@@ -1,0 +1,22 @@
+{
+    "name": "name",
+    "description": "description",
+    "authors": "author",
+    "version": "1.0.0",
+    "main": "index",
+    "scripts": {
+        "start": "nodemon index.js",
+        "db": "cd config && node database.js"
+    },
+    "dependencies": {
+        "bcrypt": "^5.0.1",
+        "cookie-parser": "^1.4.5",
+        "express": "^4.17.1",
+        "express-handlebars": "^3.1.0",
+        "jsonwebtoken": "^8.5.1",
+        "mongoose": "^5.13.5"
+    },
+    "devDependencies": {
+        "nodemon": "^1.19.2"
+    }
+}

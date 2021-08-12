@@ -226,7 +226,7 @@ span.error {
     /* float: right; */
     margin-top: 20px;
     overflow: hidden;
-    display: block;
+    display: inline-block;
 }
 
 img#sadFaceImg{

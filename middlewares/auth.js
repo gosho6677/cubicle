@@ -29,13 +29,10 @@ module.exports = () => (req, res, next) => {
 
     async function login({ username, password }) {
         const user = await authServices.getUser(username);
-        if (!user) {
-            throw new Error('Wrong username or password!');
-        }
         
         const passwordMatch = await bcrypt.compare(password, user.password);
         if (!passwordMatch) {
-            throw new Error('Wrong username or password!');
+            throw new Error('Wrong password!');
         }
 
         req.user = createToken(user);

@@ -223,7 +223,7 @@ span.error {
     border-radius: 20px;
     font-weight: normal;
     position: relative;
-    float: right;
+    /* float: right; */
     margin-top: 20px;
     overflow: hidden;
     display: block;

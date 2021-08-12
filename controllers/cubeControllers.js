@@ -1,5 +1,6 @@
 const { isOwner, isAuthorized } = require('../middlewares/guards.js');
 const preloadCube = require('../middlewares/preloadCube.js');
+const { body, validationResult } = require('express-validator');
 
 const router = require('express').Router();
 
@@ -17,24 +18,35 @@ router.get('/create', isAuthorized(), (req, res) => {
     res.render('create', { title: 'Create page' });
 });
 
-router.post('/create', isAuthorized(), async (req, res) => {
-    const cube = {
-        name: req.body.name,
-        description: req.body.description,
-        imageUrl: req.body.imageUrl,
-        difficulty: Number(req.body.difficulty),
-        author: req.user._id
-    };
+router.post('/create',
+    isAuthorized(),
+    body('name', 'Name must be atleast 5 characters long.').isLength({ min: 5 }).isAlphanumeric(),
+    body('description', 'Description must be atleast 20 characters long.').isLength({ min: 20 }).isAlphanumeric(),
+    body('imageUrl', 'Image field must be a valid URL.').isURL(),
+    body('difficulty', 'Difficulty must be between 1 and 6ck').toInt().isLength({ min: 1, max: 6 }),
+    async (req, res) => {
+        const errorsObj = validationResult(req).mapped();
+        let errors = Object.values(errorsObj);
+        const cube = {
+            name: req.body.name,
+            description: req.body.description,
+            imageUrl: req.body.imageUrl,
+            difficulty: req.body.difficulty,
+            author: req.user._id
+        };
 
-    try {
-        await req.storage.create(cube);
-    } catch (err) {
-        if (err.name == 'ValidationError') {
-            return res.render('create', { title: 'Create Cube', error: 'All fields are required. Image URL must be a valid URL.' });
+        try {
+            if (errors.length) {
+                errors = errors.map(e => e.msg).join('&');
+                throw new Error(errors);
+            }
+
+            await req.storage.create(cube);
+            res.redirect('/');
+        } catch (err) {
+            return res.render('create', { title: 'Create Cube', errors: err.message.split('&'), cube });
         }
-    }
-    res.redirect('/');
-});
+    });
 
 router.get('/details/:id', preloadCube(), async (req, res) => {
     const cube = req.data.cube;
@@ -45,7 +57,7 @@ router.get('/details/:id', preloadCube(), async (req, res) => {
 
 router.get('/edit/:id', preloadCube(), isOwner(), async (req, res) => {
     const cube = req.data.cube;
-    cube[`selected${cube.difficulty}`] =  true;
+    cube[`selected${cube.difficulty}`] = true;
     let ctx = {
         title: 'Edit Cube',
         cube
@@ -54,28 +66,45 @@ router.get('/edit/:id', preloadCube(), isOwner(), async (req, res) => {
     res.render('editCubePage', ctx);
 });
 
-router.post('/edit/:id', isOwner(), async (req, res) => {
-    let id = req.params.id;
-    const body = {
-        name: req.body.name,
-        description: req.body.description,
-        imageUrl: req.body.imageUrl,
-        difficulty: Number(req.body.difficulty),
-    };
-    try {
-        await req.storage.edit(body, id);
-        res.redirect(`/cubes/details/${id}`);
-    } catch(err) {
-        res.redirect('/404');
-    }
-});
+router.post('/edit/:id',
+    preloadCube(),
+    isOwner(),
+    body('name', 'Name must be atleast 5 characters long.').isLength({ min: 5 }).isAlphanumeric(),
+    body('description', 'Description must be atleast 20 characters long.').isLength({ min: 20 }).isAlphanumeric(),
+    body('imageUrl', 'Image field must be a valid URL.').isURL(),
+    body('difficulty', 'Difficulty must be between 1 and 6ck').toInt().isLength({ min: 1, max: 6 }),
+    async (req, res) => {
+        let id = req.params.id;
+        const errorsObj = validationResult(req).mapped();
+        let errors = Object.values(errorsObj);
+
+        const cube = {
+            name: req.body.name,
+            description: req.body.description,
+            imageUrl: req.body.imageUrl,
+            difficulty: req.body.difficulty,
+            _id: id
+        };
+        try {
+            if (errors.length) {
+                errors = errors.map(e => e.msg).join('&');
+                throw new Error(errors);
+            }
+
+            await req.storage.edit(cube, id);
+            res.redirect(`/cubes/details/${id}`);
+        } catch (err) {
+            return res.render('editCubePage', { title: 'Create Cube', errors: err.message.split('&'), cube });
+        }
+        
+    });
 
 router.get('/delete/:id', preloadCube(), isOwner(), async (req, res) => {
     const cube = req.data.cube;
-    res.render('deleteCubePage', { title: 'Delete Cube', cube});
+    res.render('deleteCubePage', { title: 'Delete Cube', cube });
 });
 
-router.post('/delete/:id', isOwner(), async (req, res) => {
+router.post('/delete/:id', preloadCube(), isOwner(), async (req, res) => {
     let id = req.params.id;
     await req.storage.del(id);
     res.redirect('/cubes');
@@ -88,7 +117,7 @@ router.get('/attach/:id', preloadCube(), async (req, res) => {
         const accessories = await req.storage.getAllAccessories(cubeIds);
 
         res.render('attachAccessory', { title: 'Attach accesories', cube, accessories });
-    } catch(err) {
+    } catch (err) {
         console.error(err.message);
     }
 });
